@@ -1,5 +1,5 @@
 resource "google_compute_instance" "vm_instance" {
-  name                      = "terraform-instance"
+  name                      = "instance-monitoring"
   machine_type              = "n1-standard-4"
   allow_stopping_for_update = true
 
