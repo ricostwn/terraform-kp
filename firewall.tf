@@ -47,3 +47,19 @@ resource "google_compute_firewall" "allow_ssh" {
   direction     = "INGRESS"
   priority      = 65534
 }
+
+resource "google_compute_firewall" "allow_grafana" {
+  name    = "terraform-allow-grafana"
+  network = google_compute_network.vpc_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["3000"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  direction     = "INGRESS"
+  priority      = 65534
+
+  target_tags = ["monitoring"]
+}
