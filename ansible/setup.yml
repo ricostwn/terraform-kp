@@ -1,0 +1,114 @@
+---
+- name: Configure monitoring server
+  hosts: monitoring_server
+  become: yes
+  gather_facts: yes
+  
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: ansible_os_family == "Debian"
+    
+    - name: Install essential packages
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - htop
+          - vim
+          - unzip
+          - software-properties-common
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+    
+    - name: Install Docker
+      block:
+        - name: Add Docker GPG key
+          apt_key:
+            url: https://download.docker.com/linux/debian/gpg
+            state: present
+        
+        - name: Add Docker repository
+          apt_repository:
+            repo: "deb https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
+            state: present
+        
+        - name: Install Docker
+          apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-compose-plugin
+            state: present
+        
+        - name: Add user to docker group
+          user:
+            name: "{{ ansible_user }}"
+            groups: docker
+            append: yes
+    
+    - name: Install Node.js
+      block:
+        - name: Download Node.js setup script
+          get_url:
+            url: https://deb.nodesource.com/setup_lts.x
+            dest: /tmp/nodesource_setup.sh
+            mode: '0755'
+        
+        - name: Run Node.js setup script
+          shell: bash /tmp/nodesource_setup.sh
+        
+        - name: Install Node.js
+          apt:
+            name: nodejs
+            state: present
+    
+    - name: Install Python tools
+      apt:
+        name:
+          - python3-pip
+          - python3-venv
+        state: present
+    
+    - name: Install monitoring tools
+      apt:
+        name:
+          - htop
+          - iotop
+          - netstat-nat
+          - nmon
+          - sysstat
+        state: present
+    
+    - name: Start and enable Docker
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+    
+    - name: Create application directory
+      file:
+        path: /opt/apps
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+    
+    - name: Display installation summary
+      debug:
+        msg: |
+          ✅ Server {{ inventory_hostname }} configured successfully!
+          🌐 Public IP: {{ ansible_host }}
+          🖥️  OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          ⚡ CPU: {{ ansible_processor_vcpus }} cores
+          💾 Memory: {{ ansible_memtotal_mb }}MB
+          🐳 Docker: Installed and running
+          📦 Node.js: {{ ansible_local.nodejs.version | default('Installed') }}
+          🐍 Python: {{ ansible_python_version }}
