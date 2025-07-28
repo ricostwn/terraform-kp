@@ -1,7 +1,9 @@
 resource "google_compute_instance" "vm_instance" {
   name                      = "instance-monitoring"
-  machine_type              = "n1-standard-4"
+  machine_type              = "custom-2-4096"
   allow_stopping_for_update = true
+
+  desired_status = "TERMINATED" # Set to "RUNNING" or "TERMINATED" based on the variable
 
   boot_disk {
     initialize_params {
@@ -18,4 +20,25 @@ resource "google_compute_instance" "vm_instance" {
   }
 
   tags = ["monitoring"]
+
+  # Wait for the instance to be ready
+  provisioner "remote-exec" {
+    inline = [
+      "echo 'Instance is ready for configuration'",
+      "sudo apt-get update -y"
+    ]
+
+    connection {
+      type        = "ssh"
+      user        = "53buahapel"
+      private_key = file("~/.ssh/id_ed25519")
+      host        = self.network_interface[0].access_config[0].nat_ip
+      timeout     = "5m"
+    }
+  }
+
+  # Run Ansible playbook
+  provisioner "local-exec" {
+    command = "cd ansible && ansible-playbook -i '${self.network_interface[0].access_config[0].nat_ip},' -u 53buahapel --private-key ~/.ssh/id_ed25519 setup.yml"
+  }
 }
