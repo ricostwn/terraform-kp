@@ -1,0 +1,17 @@
+# Copy this file to terraform.tfvars and update with your values
+
+# GCP Project Configuration
+project_id = "your-gcp-project-id"
+region = "asia-southeast2"
+
+# Server Configuration
+web_server_count = 2
+monitoring_machine_type = "e2-standard-2"
+web_server_machine_type = "e2-medium"
+
+# SSH Configuration
+ssh_user = "53buahapel"
+ssh_key_path = "~/.ssh/id_ed25519"
+
+# Network Configuration (optional - uses defaults if not specified)
+# ip_cidr_range = "10.1.0.0/20"
