@@ -1,383 +1,199 @@
 ---
-# Install common packages and Docker on all servers
 - name: Configure all servers with common setup
   hosts: all
-  become: yes
+  become: true
   gather_facts: yes
-  
-  tasks:
-    - name: Update system packages
-      apt:
-        update_cache: yes
-        upgrade: dist
-      when: ansible_os_family == "Debian"
-    
-    - name: Install essential packages
-      apt:
-        name:
-          - curl
-          - wget
-          - git
-          - htop
-          - vim
-          - unzip
-          - software-properties-common
-          - apt-transport-https
-          - ca-certificates
-          - gnupg
-          - lsb-release
-        state: present
-    
-    - name: Install Docker
-      block:
-        - name: Add Docker GPG key
-          apt_key:
-            url: https://download.docker.com/linux/debian/gpg
-            state: present
-        
-        - name: Add Docker repository
-          apt_repository:
-            repo: "deb https://download.docker.com/linux/debian {{ ansible_distribution_release }} stable"
-            state: present
-        
-        - name: Install Docker
-          apt:
-            name:
-              - docker-ce
-              - docker-ce-cli
-              - containerd.io
-              - docker-compose-plugin
-            state: present
-        
-        - name: Add user to docker group
-          user:
-            name: "{{ ansible_user }}"
-            groups: docker
-            append: yes
-    
-    - name: Start and enable Docker
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-    
-    - name: Create application directory
-      file:
-        path: /opt/apps
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0755'
+  roles:
+    - common
+
+# install node exporter on all servers
+- name: Install Node Exporter on all servers
+  hosts: all
+  become: true
+  collections:
+    - prometheus.prometheus
+  roles:
+    - node_exporter
 
 # Configure monitoring server with Prometheus, Grafana, and Nginx Load Balancer
 - name: Configure monitoring server
   hosts: monitoring_server
-  become: yes
+  become: true
   gather_facts: yes
-  
-  tasks:
-    - name: Create monitoring directories
-      file:
-        path: "{{ item }}"
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0755'
-      loop:
-        - /opt/monitoring
-        - /opt/monitoring/prometheus
-        - /opt/monitoring/grafana
-        - /opt/monitoring/nginx
-    
-    - name: Create Prometheus configuration
-      copy:
-        content: |
-          global:
-            scrape_interval: 15s
-            evaluation_interval: 15s
-          
-          scrape_configs:
-            - job_name: 'prometheus'
-              static_configs:
-                - targets: ['localhost:9090']
-            
-            - job_name: 'node-exporter'
-              static_configs:
-                - targets: [
-          {% for host in groups['web_servers'] %}
-                    '{{ hostvars[host]['internal_ip'] }}:9100',
-          {% endfor %}
-                  ]
-            
-            - job_name: 'web-servers'
-              static_configs:
-                - targets: [
-          {% for host in groups['web_servers'] %}
-                    '{{ hostvars[host]['internal_ip'] }}:3000',
-          {% endfor %}
-                  ]
-        dest: /opt/monitoring/prometheus/prometheus.yml
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
-    
-    - name: Create Nginx load balancer configuration
-      copy:
-        content: |
-          upstream web_servers {
-          {% for host in groups['web_servers'] %}
-              server {{ hostvars[host]['internal_ip'] }}:3000;
-          {% endfor %}
-          }
-          
-          server {
-              listen 80;
-              server_name _;
-              
-              location / {
-                  proxy_pass http://web_servers;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Real-IP $remote_addr;
-                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-              }
-              
-              location /health {
-                  return 200 'OK';
-                  add_header Content-Type text/plain;
-              }
-          }
-        dest: /opt/monitoring/nginx/default.conf
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
-    
-    - name: Create Docker Compose for monitoring stack
-      copy:
-        content: |
-          version: '3.8'
-          
-          services:
-            prometheus:
-              image: prom/prometheus:latest
-              container_name: prometheus
-              ports:
-                - "9090:9090"
-              volumes:
-                - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-              command:
-                - '--config.file=/etc/prometheus/prometheus.yml'
-                - '--storage.tsdb.path=/prometheus'
-                - '--web.console.libraries=/etc/prometheus/console_libraries'
-                - '--web.console.templates=/etc/prometheus/consoles'
-                - '--storage.tsdb.retention.time=200h'
-                - '--web.enable-lifecycle'
-              restart: unless-stopped
-            
-            grafana:
-              image: grafana/grafana:latest
-              container_name: grafana
-              ports:
-                - "3000:3000"
-              environment:
-                - GF_SECURITY_ADMIN_PASSWORD=admin123
-              volumes:
-                - grafana-storage:/var/lib/grafana
-              restart: unless-stopped
-            
-            nginx:
-              image: nginx:alpine
-              container_name: nginx-lb
-              ports:
-                - "80:80"
-              volumes:
-                - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
-              restart: unless-stopped
-              depends_on:
-                - prometheus
-          
-          volumes:
-            grafana-storage:
-        dest: /opt/monitoring/docker-compose.yml
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
-    
-    - name: Start monitoring stack
-      shell: cd /opt/monitoring && docker compose up -d
-      become_user: "{{ ansible_user }}"
+  roles:
+    - monitoring
 
-# Configure web servers with Node Exporter and sample web application
-- name: Configure web servers
-  hosts: web_servers
-  become: yes
-  gather_facts: yes
+# # Configure web servers with Node Exporter and sample web application
+# - name: Configure web servers
+#   hosts: web_servers
+#   become: yes
+#   gather_facts: yes
   
-  tasks:
-    - name: Create web server directories
-      file:
-        path: "{{ item }}"
-        state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0755'
-      loop:
-        - /opt/apps/web
-        - /opt/apps/monitoring
+#   tasks:
+#     - name: Create web server directories
+#       file:
+#         path: "{{ item }}"
+#         state: directory
+#         owner: "{{ ansible_user }}"
+#         group: "{{ ansible_user }}"
+#         mode: '0755'
+#       loop:
+#         - /opt/apps/web
+#         - /opt/apps/monitoring
     
-    - name: Create sample web application
-      copy:
-        content: |
-          const express = require('express');
-          const app = express();
-          const port = 3000;
-          const os = require('os');
+#     - name: Create sample web application
+#       copy:
+#         content: |
+#           const express = require('express');
+#           const app = express();
+#           const port = 3000;
+#           const os = require('os');
           
-          app.get('/', (req, res) => {
-            res.json({
-              message: 'Hello from Web Server!',
-              hostname: os.hostname(),
-              uptime: os.uptime(),
-              loadavg: os.loadavg(),
-              freemem: os.freemem(),
-              totalmem: os.totalmem(),
-              timestamp: new Date().toISOString()
-            });
-          });
+#           app.get('/', (req, res) => {
+#             res.json({
+#               message: 'Hello from Web Server!',
+#               hostname: os.hostname(),
+#               uptime: os.uptime(),
+#               loadavg: os.loadavg(),
+#               freemem: os.freemem(),
+#               totalmem: os.totalmem(),
+#               timestamp: new Date().toISOString()
+#             });
+#           });
           
-          app.get('/health', (req, res) => {
-            res.json({ status: 'healthy', timestamp: new Date().toISOString() });
-          });
+#           app.get('/health', (req, res) => {
+#             res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+#           });
           
-          app.get('/metrics', (req, res) => {
-            res.set('Content-Type', 'text/plain');
-            res.send(`
-          # HELP nodejs_heap_used_bytes Node.js heap used bytes
-          # TYPE nodejs_heap_used_bytes gauge
-          nodejs_heap_used_bytes ${process.memoryUsage().heapUsed}
+#           app.get('/metrics', (req, res) => {
+#             res.set('Content-Type', 'text/plain');
+#             res.send(`
+#           # HELP nodejs_heap_used_bytes Node.js heap used bytes
+#           # TYPE nodejs_heap_used_bytes gauge
+#           nodejs_heap_used_bytes ${process.memoryUsage().heapUsed}
           
-          # HELP nodejs_heap_total_bytes Node.js heap total bytes
-          # TYPE nodejs_heap_total_bytes gauge
-          nodejs_heap_total_bytes ${process.memoryUsage().heapTotal}
+#           # HELP nodejs_heap_total_bytes Node.js heap total bytes
+#           # TYPE nodejs_heap_total_bytes gauge
+#           nodejs_heap_total_bytes ${process.memoryUsage().heapTotal}
           
-          # HELP nodejs_uptime_seconds Node.js uptime in seconds
-          # TYPE nodejs_uptime_seconds counter
-          nodejs_uptime_seconds ${process.uptime()}
-            `.trim());
-          });
+#           # HELP nodejs_uptime_seconds Node.js uptime in seconds
+#           # TYPE nodejs_uptime_seconds counter
+#           nodejs_uptime_seconds ${process.uptime()}
+#             `.trim());
+#           });
           
-          app.listen(port, '0.0.0.0', () => {
-            console.log(`Web server running on port ${port}`);
-          });
-        dest: /opt/apps/web/app.js
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
+#           app.listen(port, '0.0.0.0', () => {
+#             console.log(`Web server running on port ${port}`);
+#           });
+#         dest: /opt/apps/web/app.js
+#         owner: "{{ ansible_user }}"
+#         group: "{{ ansible_user }}"
+#         mode: '0644'
     
-    - name: Create package.json for web app
-      copy:
-        content: |
-          {
-            "name": "scalable-web-app",
-            "version": "1.0.0",
-            "description": "Scalable web application with monitoring",
-            "main": "app.js",
-            "scripts": {
-              "start": "node app.js"
-            },
-            "dependencies": {
-              "express": "^4.18.2"
-            }
-          }
-        dest: /opt/apps/web/package.json
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
+#     - name: Create package.json for web app
+#       copy:
+#         content: |
+#           {
+#             "name": "scalable-web-app",
+#             "version": "1.0.0",
+#             "description": "Scalable web application with monitoring",
+#             "main": "app.js",
+#             "scripts": {
+#               "start": "node app.js"
+#             },
+#             "dependencies": {
+#               "express": "^4.18.2"
+#             }
+#           }
+#         dest: /opt/apps/web/package.json
+#         owner: "{{ ansible_user }}"
+#         group: "{{ ansible_user }}"
+#         mode: '0644'
     
-    - name: Create Dockerfile for web app
-      copy:
-        content: |
-          FROM node:18-alpine
+#     - name: Create Dockerfile for web app
+#       copy:
+#         content: |
+#           FROM node:18-alpine
           
-          WORKDIR /app
+#           WORKDIR /app
           
-          COPY package*.json ./
-          RUN npm install
+#           COPY package*.json ./
+#           RUN npm install
           
-          COPY . .
+#           COPY . .
           
-          EXPOSE 3000
+#           EXPOSE 3000
           
-          USER node
+#           USER node
           
-          CMD ["npm", "start"]
-        dest: /opt/apps/web/Dockerfile
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
+#           CMD ["npm", "start"]
+#         dest: /opt/apps/web/Dockerfile
+#         owner: "{{ ansible_user }}"
+#         group: "{{ ansible_user }}"
+#         mode: '0644'
     
-    - name: Create Docker Compose for web server
-      copy:
-        content: |
-          version: '3.8'
+#     - name: Create Docker Compose for web server
+#       copy:
+#         content: |
+#           version: '3.8'
           
-          services:
-            web-app:
-              build: .
-              container_name: web-app
-              ports:
-                - "3000:3000"
-              restart: unless-stopped
-              environment:
-                - NODE_ENV=production
+#           services:
+#             web-app:
+#               build: .
+#               container_name: web-app
+#               ports:
+#                 - "3000:3000"
+#               restart: unless-stopped
+#               environment:
+#                 - NODE_ENV=production
             
-            node-exporter:
-              image: prom/node-exporter:latest
-              container_name: node-exporter
-              ports:
-                - "9100:9100"
-              restart: unless-stopped
-              command:
-                - '--path.procfs=/host/proc'
-                - '--path.rootfs=/rootfs'
-                - '--path.sysfs=/host/sys'
-                - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-              volumes:
-                - /proc:/host/proc:ro
-                - /sys:/host/sys:ro
-                - /:/rootfs:ro
-        dest: /opt/apps/web/docker-compose.yml
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
-        mode: '0644'
+#             node-exporter:
+#               image: prom/node-exporter:latest
+#               container_name: node-exporter
+#               ports:
+#                 - "9100:9100"
+#               restart: unless-stopped
+#               command:
+#                 - '--path.procfs=/host/proc'
+#                 - '--path.rootfs=/rootfs'
+#                 - '--path.sysfs=/host/sys'
+#                 - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+#               volumes:
+#                 - /proc:/host/proc:ro
+#                 - /sys:/host/sys:ro
+#                 - /:/rootfs:ro
+#         dest: /opt/apps/web/docker-compose.yml
+#         owner: "{{ ansible_user }}"
+#         group: "{{ ansible_user }}"
+#         mode: '0644'
     
-    - name: Build and start web application
-      shell: cd /opt/apps/web && docker compose up -d --build
-      become_user: "{{ ansible_user }}"
+#     - name: Build and start web application
+#       shell: cd /opt/apps/web && docker compose up -d --build
+#       become_user: "{{ ansible_user }}"
 
-# Display summary
-- name: Display deployment summary
-  hosts: monitoring_server
-  gather_facts: no
+# # Display summary
+# - name: Display deployment summary
+#   hosts: monitoring_server
+#   gather_facts: no
   
-  tasks:
-    - name: Show deployment information
-      debug:
-        msg: |
-          🎉 Deployment completed successfully!
+#   tasks:
+#     - name: Show deployment information
+#       debug:
+#         msg: |
+#           🎉 Deployment completed successfully!
           
-          📊 Monitoring Server: {{ ansible_host }}
-          - Grafana: http://{{ ansible_host }}:3000 (admin/admin123)
-          - Prometheus: http://{{ ansible_host }}:9090
-          - Load Balancer: http://{{ ansible_host }}
+#           📊 Monitoring Server: {{ ansible_host }}
+#           - Grafana: http://{{ ansible_host }}:3000 (admin/admin123)
+#           - Prometheus: http://{{ ansible_host }}:9090
+#           - Load Balancer: http://{{ ansible_host }}
           
-          🌐 Web Servers:
-          {% for host in groups['web_servers'] %}
-          - {{ hostvars[host]['inventory_hostname'] }}: {{ hostvars[host]['ansible_host'] }}
-          {% endfor %}
+#           🌐 Web Servers:
+#           {% for host in groups['web_servers'] %}
+#           - {{ hostvars[host]['inventory_hostname'] }}: {{ hostvars[host]['ansible_host'] }}
+#           {% endfor %}
           
-          🔍 Next steps:
-          1. Access Grafana and import Node Exporter dashboard (ID: 1860)
-          2. Configure alerting rules in Prometheus
-          3. Scale web servers by updating terraform variables
-          4. Monitor application metrics at /metrics endpoint
+#           🔍 Next steps:
+#           1. Access Grafana and import Node Exporter dashboard (ID: 1860)
+#           2. Configure alerting rules in Prometheus
+#           3. Scale web servers by updating terraform variables
+#           4. Monitor application metrics at /metrics endpoint

@@ -1,0 +1,6 @@
+---
+roles:
+  - name: prometheus.prometheus
+    src: https://github.com/prometheus-community/ansible
+    scm: git
+    version: main

@@ -92,6 +92,52 @@ function Start-InfrastructureDeployment {
     # Show outputs
     Write-Banner "Deployment Complete"
     terraform output
+    
+    # Run Ansible configuration
+    Write-Banner "Configuring Servers with Ansible"
+    Start-AnsibleConfiguration
+}
+
+function Start-AnsibleConfiguration {
+    Write-Host "Configuring servers with Ansible..." -ForegroundColor Yellow
+    
+    # Check if inventory file exists
+    if (-not (Test-Path "ansible/inventory.ini")) {
+        Write-Host "❌ Ansible inventory file not found" -ForegroundColor Red
+        Write-Host "Please ensure Terraform completed successfully" -ForegroundColor Yellow
+        return
+    }
+    
+    # Test connectivity first
+    Write-Host "Testing SSH connectivity..." -ForegroundColor Yellow
+    Set-Location ansible
+    
+    # Wait for servers to be ready
+    Write-Host "Waiting for servers to be ready..." -ForegroundColor Yellow
+    Start-Sleep 30
+    
+    # Test connectivity
+    $connectivityTest = ansible all -i inventory.ini -m ping --one-line 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✓ All servers are reachable" -ForegroundColor Green
+        
+        # Run the playbook
+        Write-Host "Running Ansible playbook..." -ForegroundColor Yellow
+        ansible-playbook -i inventory.ini playbook.yml
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✓ Ansible configuration completed successfully!" -ForegroundColor Green
+        } else {
+            Write-Host "❌ Ansible configuration failed" -ForegroundColor Red
+            Write-Host "You can retry with: cd ansible && ansible-playbook -i inventory.ini playbook.yml" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "❌ Some servers are not reachable" -ForegroundColor Red
+        Write-Host "Output: $connectivityTest" -ForegroundColor Yellow
+        Write-Host "You can retry later with: cd ansible && ansible-playbook -i inventory.ini playbook.yml" -ForegroundColor Yellow
+    }
+    
+    Set-Location ..
 }
 
 function Remove-Infrastructure {

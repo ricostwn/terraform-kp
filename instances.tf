@@ -106,16 +106,3 @@ resource "local_file" "ansible_inventory" {
   
   filename = "${path.module}/ansible/inventory.ini"
 }
-
-# Run Ansible playbook
-resource "null_resource" "ansible_provisioning" {
-  depends_on = [local_file.ansible_inventory]
-  
-  provisioner "local-exec" {
-    command = "cd ansible && ansible-playbook -i inventory.ini --private-key ${var.ssh_key_path} playbook.yml"
-  }
-
-  triggers = {
-    inventory_content = local_file.ansible_inventory.content
-  }
-}
