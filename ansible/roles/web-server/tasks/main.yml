@@ -1,6 +1,19 @@
 ---
 - name: pull latest image from Docker Hub
-  docker_image:
-    name: prom/prometheus
+  community.docker.docker_image:
+    name: internundip/website-eduko
     tag: latest
     source: pull
+
+- name: create and start container
+  community.docker.docker_container:
+    name: website-eduko
+    image: internundip/website-eduko:latest
+    state: started
+    restart_policy: always
+    recreate: true
+    env:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: '1'
+    ports:
+      - "3000:3000"

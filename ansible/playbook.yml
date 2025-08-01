@@ -23,6 +23,13 @@
   roles:
     - monitoring
 
+- name: Configure web servers with Docker and Node Exporter
+  hosts: web_servers
+  become: true
+  gather_facts: yes
+  roles:
+    - web-server
+
 # # Configure web servers with Node Exporter and sample web application
 # - name: Configure web servers
 #   hosts: web_servers
