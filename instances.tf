@@ -3,6 +3,7 @@ resource "google_compute_instance" "monitoring_server" {
   name                      = "monitoring-server"
   machine_type              = var.monitoring_machine_type
   allow_stopping_for_update = true
+  desired_status = "RUNNING"
 
   boot_disk {
     initialize_params {
@@ -48,6 +49,7 @@ resource "google_compute_instance" "web_servers" {
   name                      = "web-server-${count.index + 1}"
   machine_type              = var.web_server_machine_type
   allow_stopping_for_update = true
+  desired_status = "RUNNING"
 
   boot_disk {
     initialize_params {
