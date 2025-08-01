@@ -3,7 +3,7 @@ resource "google_compute_instance" "monitoring_server" {
   name                      = "monitoring-server"
   machine_type              = var.monitoring_machine_type
   allow_stopping_for_update = true
-  desired_status = "RUNNING"
+  desired_status = "TERMINATED"
 
   boot_disk {
     initialize_params {
