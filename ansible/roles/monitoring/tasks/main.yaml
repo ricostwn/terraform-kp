@@ -37,5 +37,5 @@
     mode: '0644'
 
 - name: Start monitoring stack
-  shell: cd /opt/monitoring && docker compose up -d
+  shell: cd /opt/monitoring && docker compose down && docker compose up -d
   become_user: "{{ ansible_user }}"

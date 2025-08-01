@@ -14,11 +14,3 @@ scrape_configs:
           '{{ hostvars[host]['internal_ip'] }}:9100',
 {% endfor %}
         ]
-  
-  - job_name: 'web-servers'
-    static_configs:
-      - targets: [
-{% for host in groups['web_servers'] %}
-          '{{ hostvars[host]['internal_ip'] }}:3000',
-{% endfor %}
-        ]
