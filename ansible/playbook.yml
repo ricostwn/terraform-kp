@@ -20,6 +20,8 @@
   hosts: monitoring_server
   become: true
   gather_facts: yes
+  vars_files:
+    - group_vars/secret.yml
   roles:
     - monitoring
 
