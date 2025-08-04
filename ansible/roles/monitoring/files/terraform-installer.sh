@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e  # Stop jika ada perintah yang error
-
 # Step 1: Tambahkan GPG key HashiCorp
 echo "[+] Menambahkan GPG key HashiCorp..."
 wget -O- https://apt.releases.hashicorp.com/gpg | \
