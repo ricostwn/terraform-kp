@@ -97,14 +97,30 @@
     name: ansible
     state: present
 
+- name: Change ownership of /opt/monitoring/terraform to 53buahapel
+  file:
+    path: /opt/monitoring/terraform
+    owner: 53buahapel
+    group: 53buahapel
+    state: directory
+  become: true
+
 - name: Clone terraform repository
-  become_user: gitlab-runner
+  become_user: "{{ ansible_user }}"
   ansible.builtin.git:
     repo: 'https://{{username}}:{{password}}@gitlab.53buahapel.web.id/iac/terraform.git'
     dest: /opt/monitoring/terraform
     version: main
     update: yes
     force: yes
+
+- name: Change ownership of /opt/monitoring/terraform to gitlab-runner
+  file:
+    path: /opt/monitoring/terraform
+    owner: gitlab-runner
+    group: gitlab-runner
+    state: directory
+  become: true
 
 - name: Start monitoring stack
   shell: cd /opt/monitoring && docker compose down && docker compose up -d
