@@ -50,6 +50,11 @@
     chdir: /opt/monitoring
   become: true
 
+- name: Ensure ansible installed
+  apt:
+    name: ansible
+    state: present
+
 - name: Clone terraform repository
   become_user: "{{ ansible_user }}"
   ansible.builtin.git:
@@ -57,6 +62,7 @@
     dest: /opt/monitoring/terraform
     version: main
     update: yes
+    force: yes
 
 - name: Start monitoring stack
   shell: cd /opt/monitoring && docker compose down && docker compose up -d
