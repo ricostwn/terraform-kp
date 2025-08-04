@@ -36,6 +36,20 @@
     group: "{{ ansible_user }}"
     mode: '0644'
 
+- name: Copy terraform-installer.sh script
+  copy:
+    src: terraform-installer.sh
+    dest: /opt/monitoring/terraform-installer.sh
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Run Terraform installer script
+  shell: /opt/monitoring/terraform-installer.sh
+  args:
+    chdir: /opt/monitoring
+  become: true
+
 - name: Start monitoring stack
   shell: cd /opt/monitoring && docker compose down && docker compose up -d
   become_user: "{{ ansible_user }}"
