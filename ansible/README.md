@@ -17,6 +17,7 @@ This playbook sets up a monitoring stack using Prometheus, Grafana, and Node Exp
     ```
 2. **Configure Inventory**:
     Inventory should automatically set up after running terraform.
+
 3. **Set up secret variables**:
     Ensure you have the `ansible/group_vars/secret.yml` file configured with your secrets, such as API keys or passwords.
     ```bash
