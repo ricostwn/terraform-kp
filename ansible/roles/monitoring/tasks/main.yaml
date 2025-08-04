@@ -11,6 +11,7 @@
     - /opt/monitoring/prometheus
     - /opt/monitoring/grafana
     - /opt/monitoring/nginx
+    - /opt/monitoring/cicd
 
 - name: Create Prometheus configuration
   template:
@@ -35,6 +36,14 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: '0644'
+
+- name: Copy cicd script and make it executable
+  copy:
+    src: script.sh
+    dest: /opt/monitoring/cicd/script.sh
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
 
 - name: Copy terraform-installer.sh script
   copy:
