@@ -4,6 +4,7 @@
     name: internundip/website-eduko
     tag: latest
     source: pull
+    force_source: true
 
 - name: create and start container
   community.docker.docker_container:

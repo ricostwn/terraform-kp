@@ -1,0 +1,7 @@
+---
+- name: Configure web servers with Docker and Node Exporter
+  hosts: web_servers
+  become: true
+  gather_facts: yes
+  roles:
+    - web-server
