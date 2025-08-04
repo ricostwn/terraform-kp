@@ -6,8 +6,8 @@ terraform {
     }
   }
   backend "gcs" {
-    bucket  = "kp-tfstate-bucket"
-    prefix  = "terraform/state"
+    bucket = "kp-tfstate-bucket"
+    prefix = "terraform/state"
   }
 }
 

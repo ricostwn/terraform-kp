@@ -3,7 +3,7 @@ resource "google_compute_instance" "monitoring_server" {
   name                      = "monitoring-server"
   machine_type              = var.monitoring_machine_type
   allow_stopping_for_update = true
-  desired_status = var.monitoring_server_status
+  desired_status            = var.monitoring_server_status
 
   boot_disk {
     initialize_params {
@@ -49,7 +49,7 @@ resource "google_compute_instance" "web_servers" {
   name                      = "web-server-${count.index + 1}"
   machine_type              = var.web_server_machine_type
   allow_stopping_for_update = true
-  desired_status = "RUNNING"
+  desired_status            = "RUNNING"
 
   boot_disk {
     initialize_params {
@@ -92,19 +92,19 @@ resource "google_compute_instance" "web_servers" {
 # Generate Ansible inventory after all instances are created
 resource "local_file" "ansible_inventory" {
   depends_on = [google_compute_instance.monitoring_server, google_compute_instance.web_servers]
-  
+
   content = templatefile("${path.module}/ansible/inventory.tpl", {
-    monitoring_server_ip = google_compute_instance.monitoring_server.network_interface[0].access_config[0].nat_ip
+    monitoring_server_ip          = google_compute_instance.monitoring_server.network_interface[0].access_config[0].nat_ip
     monitoring_server_internal_ip = google_compute_instance.monitoring_server.network_interface[0].network_ip
     web_servers = [
       for i, server in google_compute_instance.web_servers : {
-        name = server.name
-        ip = server.network_interface[0].access_config[0].nat_ip
+        name        = server.name
+        ip          = server.network_interface[0].access_config[0].nat_ip
         internal_ip = server.network_interface[0].network_ip
       }
     ]
     ssh_user = var.ssh_user
   })
-  
+
   filename = "${path.module}/ansible/inventory.ini"
 }
