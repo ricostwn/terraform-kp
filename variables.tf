@@ -31,6 +31,11 @@ variable "monitoring_machine_type" {
   default     = "e2-standard-2"
 }
 
+variable "monitoring_server_status" {
+  description = "Desired status for the monitoring server"
+  default     = "RUNNING"
+}
+
 variable "ssh_user" {
   description = "SSH username"
   default     = "53buahapel"
