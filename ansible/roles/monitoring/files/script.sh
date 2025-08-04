@@ -52,6 +52,6 @@ git pull origin main
 cd ansible
 
 echo "Executing CI/CD pipeline to update web server with new Docker image..."
-ansible-playbook -i inventory.ini cicd-playbook.yml --tags web_server_config
+ansible-playbook -i inventory.ini cicd-playbook.yml
 
 echo "[✓] CI/CD pipeline executed successfully. Web server updated with new Docker image."
