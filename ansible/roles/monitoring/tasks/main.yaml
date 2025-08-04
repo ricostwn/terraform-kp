@@ -59,6 +59,39 @@
     chdir: /opt/monitoring
   become: true
 
+- name: Check if SSH key pair exists for gitlab-runner
+  stat:
+    path: /home/gitlab-runner/.ssh/id_ed25519
+  register: gitlab_runner_ssh_key
+  become: true
+
+- name: Generate SSH key pair for gitlab-runner if not exists
+  openssh_keypair:
+    path: /home/gitlab-runner/.ssh/id_ed25519
+    type: ed25519
+    size: 2048
+    owner: gitlab-runner
+    group: gitlab-runner
+    mode: '0600'
+  become: true
+  when: not gitlab_runner_ssh_key.stat.exists
+
+- name: Read gitlab-runner public key
+  slurp:
+    src: /home/gitlab-runner/.ssh/id_ed25519.pub
+  register: gitlab_runner_public_key
+  become: true
+
+- name: Add gitlab-runner's public key to 53buahapel user's authorized_keys on web servers
+  authorized_key:
+    user: 53buahapel
+    state: present
+    key: "{{ gitlab_runner_public_key.content | b64decode }}"
+    comment: "gitlab-runner@monitoring-server"
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['web_servers'] }}"
+  become: true
+
 - name: Ensure ansible installed
   apt:
     name: ansible
