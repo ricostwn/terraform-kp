@@ -1,0 +1,51 @@
+---
+- name: Configure SSL certificates with Certbot
+  hosts: monitoring_server
+  become: true
+  gather_facts: yes
+  vars_files:
+    - group_vars/all.yml
+    - group_vars/secret.yml
+  roles:
+    - ssl
+
+- name: Restart monitoring stack with SSL
+  hosts: monitoring_server
+  become: true
+  gather_facts: yes
+  tasks:
+    - name: Restart monitoring stack to apply SSL configuration
+      shell: cd /opt/monitoring && docker compose down && docker compose up -d
+      become_user: "{{ ansible_user }}"
+    
+    - name: Show SSL deployment information
+      debug:
+        msg: |
+          🔐 SSL Configuration completed successfully!
+          
+          📊 Monitoring Server (HTTPS): https://{{ domain_name }}
+          - Grafana: https://{{ domain_name }}:3000 (admin/admin123)
+          - Prometheus: https://{{ domain_name }}:9090
+          - Load Balancer: https://{{ domain_name }}
+          
+          🌐 Web Servers (via HTTPS Load Balancer):
+          {% for host in groups['web_servers'] %}
+          - {{ hostvars[host]['inventory_hostname'] }}: {{ hostvars[host]['ansible_host'] }} (backend)
+          {% endfor %}
+          
+          🔒 SSL Certificate Information:
+          - Domain: {{ domain_name }}
+          - Auto-renewal: Enabled (daily at 12:00 PM)
+          - Certificate path: /etc/letsencrypt/live/{{ domain_name }}/
+          
+          🔍 Next steps:
+          1. Verify SSL certificate: https://{{ domain_name }}
+          2. Test HTTP to HTTPS redirect
+          3. Access Grafana securely: https://{{ domain_name }}:3000
+          4. Import Node Exporter dashboard (ID: 1860)
+          5. Configure alerting rules in Prometheus
+          
+          ⚠️  Important Notes:
+          - Make sure your domain {{ domain_name }} points to your monitoring server
+          - Firewall should allow ports 80 and 443
+          - Certificate will auto-renew before expiration

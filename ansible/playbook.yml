@@ -32,6 +32,17 @@
   roles:
     - web-server
 
+# Optional: Configure SSL certificates (uncomment to enable)
+# - name: Configure SSL certificates with Certbot
+#   hosts: monitoring_server
+#   become: true
+#   gather_facts: yes
+#   vars_files:
+#     - group_vars/all.yml
+#     - group_vars/secret.yml
+#   roles:
+#     - ssl
+
 #   tasks:
 #     - name: Show deployment information
 #       debug:

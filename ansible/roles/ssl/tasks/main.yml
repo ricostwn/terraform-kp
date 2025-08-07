@@ -1,0 +1,80 @@
+---
+- name: Install snapd
+  ansible.builtin.package:
+    name: snapd
+    state: present
+    update_cache: yes
+
+- name: Install core snap to refresh snapd
+  snap:
+    name: core
+    classic: no
+
+- name: Remove certbot-auto and any Certbot OS packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: absent
+  loop:
+    - certbot
+    - python3-certbot-nginx
+  ignore_errors: yes
+
+- name: Install Certbot via snap
+  snap:
+    name: certbot
+    classic: yes
+
+- name: Create symlink for certbot
+  ansible.builtin.file:
+    src: /snap/bin/certbot
+    dest: /usr/bin/certbot
+    state: link
+  ignore_errors: yes
+
+- name: Create SSL certificates directory
+  ansible.builtin.file:
+    path: /opt/monitoring/ssl
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'
+
+- name: Check if SSL certificate already exists
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+  register: ssl_cert_exists
+
+- name: Stop nginx container before obtaining certificate
+  shell: cd /opt/monitoring && docker compose stop nginx
+  when: not ssl_cert_exists.stat.exists
+
+- name: Obtain SSL certificate using Certbot (standalone mode)
+  shell: |
+    certbot certonly --standalone \
+      --email {{ ssl_email }} \
+      --agree-tos \
+      --no-eff-email \
+      -d {{ domain_name }} \
+      --non-interactive
+  when: not ssl_cert_exists.stat.exists
+  become: true
+
+- name: Create SSL certificate renewal cron job
+  cron:
+    name: "Renew SSL certificates"
+    minute: "0"
+    hour: "12"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "/usr/bin/certbot renew --quiet --deploy-hook 'cd /opt/monitoring && docker compose restart nginx'"
+    user: root
+
+- name: Set proper permissions for SSL certificates
+  ansible.builtin.file:
+    path: /etc/letsencrypt
+    owner: root
+    group: root
+    mode: '0755'
+    recurse: yes
+  become: true
