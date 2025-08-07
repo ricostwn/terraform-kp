@@ -1,4 +1,14 @@
 ---
+- name: Install pip install docker-py
+  hosts: web_servers
+  become: true
+  gather_facts: yes
+  tasks:
+    - name: Install docker-py
+      ansible.builtin.pip:
+        name: docker
+        state: present
+
 - name: pull latest image from Docker Hub
   community.docker.docker_image:
     name: internundip/website-eduko
