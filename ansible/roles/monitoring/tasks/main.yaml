@@ -97,15 +97,6 @@
     name: ansible
     state: present
 
-- name: Clone terraform repository
-  become_user: "{{ ansible_user }}"
-  ansible.builtin.git:
-    repo: 'https://{{username}}:{{password}}@gitlab.53buahapel.web.id/iac/terraform.git'
-    dest: /opt/monitoring/terraform
-    version: main
-    update: yes
-    force: yes
-
 - name: Start monitoring stack
   shell: cd /opt/monitoring && docker compose down && docker compose up -d
   become_user: "{{ ansible_user }}"

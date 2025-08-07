@@ -1,0 +1,65 @@
+---
+- name: Configure all servers with common setup
+  hosts: all
+  become: true
+  gather_facts: yes
+  roles:
+    - common
+
+# install node exporter on all servers
+- name: Install Node Exporter on all servers
+  hosts: all
+  become: true
+  collections:
+    - prometheus.prometheus
+  roles:
+    - node_exporter
+
+# Configure monitoring server with Prometheus, Grafana, and Nginx Load Balancer
+- name: Configure monitoring server
+  hosts: monitoring_server
+  become: true
+  gather_facts: yes
+  vars_files:
+    - group_vars/secret.yml
+  roles:
+    - monitoring
+
+- name: Clone terraform repository
+  hosts: monitoring_server
+  become_user: "{{ ansible_user }}"
+  ansible.builtin.git:
+    repo: 'https://{{username}}:{{password}}@gitlab.53buahapel.web.id/iac/terraform.git'
+    dest: /opt/monitoring/terraform
+    version: main
+    update: yes
+    force: yes
+
+- name: Configure web servers with Docker
+  hosts: web_servers
+  become: true
+  gather_facts: yes
+  roles:
+    - web-server
+
+#   tasks:
+#     - name: Show deployment information
+#       debug:
+#         msg: |
+#           🎉 Deployment completed successfully!
+          
+#           📊 Monitoring Server: {{ ansible_host }}
+#           - Grafana: http://{{ ansible_host }}:3000 (admin/admin123)
+#           - Prometheus: http://{{ ansible_host }}:9090
+#           - Load Balancer: http://{{ ansible_host }}
+          
+#           🌐 Web Servers:
+#           {% for host in groups['web_servers'] %}
+#           - {{ hostvars[host]['inventory_hostname'] }}: {{ hostvars[host]['ansible_host'] }}
+#           {% endfor %}
+          
+#           🔍 Next steps:
+#           1. Access Grafana and import Node Exporter dashboard (ID: 1860)
+#           2. Configure alerting rules in Prometheus
+#           3. Scale web servers by updating terraform variables
+#           4. Monitor application metrics at /metrics endpoint
