@@ -54,7 +54,7 @@
     mode: '0755'
 
 - name: Run Terraform installer script
-  shell: /opt/monitoring/terraform-installer.sh
+  shell: bash /opt/monitoring/terraform-installer.sh
   args:
     chdir: /opt/monitoring
   become: true
