@@ -44,7 +44,33 @@ check_cooldown() {
     return 0
 }
 
-# Function to scale web servers
+# Function to check health of web servers
+health_check() {
+    local retries=3
+    local delay=30
+    local attempt=1
+
+    log "🔍 Running health check on web servers..."
+
+    while [ $attempt -le $retries ]; do
+        local unhealthy=$(curl -s "${PROMETHEUS_URL}/api/v1/query?query=up{job=\"node\"}" \
+            | jq -r '.data.result[] | select(.value[1] != "1")')
+
+        if [ -z "$unhealthy" ]; then
+            log "✅ All web servers are healthy (attempt $attempt)"
+            return 0
+        else
+            log "⚠️ Some servers unhealthy (attempt $attempt). Retrying in $delay seconds..."
+            sleep $delay
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    log "❌ Health check failed after $retries attempts"
+    return 1
+}
+
+# Function to scale web servers (updated)
 scale_servers() {
     local target_count=$1
     local current_count=$(get_current_servers)
@@ -54,18 +80,25 @@ scale_servers() {
         
         terraform apply -var="web_server_count=$target_count" -auto-approve
         if [ $? -eq 0 ]; then
-            log "✅ Successfully scaled to $target_count servers"
+            log "Terraform applied successfully. Waiting for instances..."
             
             # Save last scale time
             date +%s > "$LAST_SCALE_FILE"
             
-            # Wait for new instances to be ready
+            # Wait for new instances to boot
             sleep 60
             
-            # Re-run Ansible to update configurations
-            cd ansible && ansible-playbook -i inventory.ini playbook.yml --tags monitoring_config
+            # Run health check
+            if health_check; then
+                # Re-run Ansible to update configurations
+                cd ansible && ansible-playbook -i inventory.ini playbook.yml --tags monitoring_config
+                log "✅ Scaling completed and all servers healthy"
+            else
+                log "❌ Scaling failed due to unhealthy servers"
+                exit 1
+            fi
         else
-            log "❌ Failed to scale servers"
+            log "❌ Failed to scale servers (terraform error)"
             exit 1
         fi
     else
