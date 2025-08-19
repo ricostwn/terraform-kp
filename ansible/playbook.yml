@@ -6,14 +6,14 @@
   roles:
     - common
 
-# install node exporter on all servers
+# Install Node Exporter on all servers
 - name: Install Node Exporter on all servers
   hosts: all
   become: true
   collections:
     - prometheus.prometheus
   roles:
-    - node_exporter
+    - { role: node_exporter, tags: ["monitoring_config"] }
 
 # Configure monitoring server with Prometheus, Grafana, and Nginx Load Balancer
 - name: Configure monitoring server
@@ -25,12 +25,13 @@
   roles:
     - monitoring
 
+# Configure web servers with Docker
 - name: Configure web servers with Docker
   hosts: web_servers
   become: true
   gather_facts: yes
   roles:
-    - web-server
+    - { role: web-server, tags: ["monitoring_config"] }
 
 # Optional: Configure SSL certificates (uncomment to enable)
 # - name: Configure SSL certificates with Certbot
@@ -42,23 +43,23 @@
 #     - group_vars/secret.yml
 #   roles:
 #     - ssl
-
+#
 #   tasks:
 #     - name: Show deployment information
 #       debug:
 #         msg: |
 #           🎉 Deployment completed successfully!
-          
+#
 #           📊 Monitoring Server: {{ ansible_host }}
 #           - Grafana: http://{{ ansible_host }}:3000 (admin/admin123)
 #           - Prometheus: http://{{ ansible_host }}:9090
 #           - Load Balancer: http://{{ ansible_host }}
-          
+#
 #           🌐 Web Servers:
 #           {% for host in groups['web_servers'] %}
 #           - {{ hostvars[host]['inventory_hostname'] }}: {{ hostvars[host]['ansible_host'] }}
 #           {% endfor %}
-          
+#
 #           🔍 Next steps:
 #           1. Access Grafana and import Node Exporter dashboard (ID: 1860)
 #           2. Configure alerting rules in Prometheus
