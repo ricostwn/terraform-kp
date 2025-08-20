@@ -13,4 +13,13 @@ scrape_configs:
 {% for host in groups['web_servers'] %}
           '{{ hostvars[host]['internal_ip'] }}:9100',
 {% endfor %}
-        ]
+        ]   
+
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"

@@ -98,3 +98,20 @@ resource "google_compute_firewall" "allow_prometheus" {
 
   target_tags = ["monitoring"]
 }
+
+# Firewall rule for Alertmanager
+resource "google_compute_firewall" "allow_alertmanager" {
+  name    = "terraform-allow-alertmanager"
+  network = google_compute_network.vpc_network.name
+
+  allow {
+    protocol = "tcp"
+    ports    = ["9093"]
+  }
+
+  source_ranges = ["0.0.0.0/0"]
+  direction     = "INGRESS"
+  priority      = 65534
+
+  target_tags = ["monitoring"]
+}

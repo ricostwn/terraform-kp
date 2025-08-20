@@ -1,0 +1,11 @@
+groups:
+  - name: semua server
+    rules:
+      - alert: CPUHighUsage
+        expr: ((sum by(instance) (irate(node_cpu_seconds_total{mode!="idle"}[15s]))) / sum by(instance) (irate(node_cpu_seconds_total{}[15s]))) * 100 >= 50
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "CPU usage di instance {{ '{{' }} $labels.instance {{ '}}' }} >= 50% selama 30 detik terakhir!"
+          description: "CPU load tinggi terdeteksi."
