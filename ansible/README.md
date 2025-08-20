@@ -32,6 +32,6 @@ This playbook sets up a monitoring stack using Prometheus, Grafana, and Node Exp
 4. **Run the Playbook**:
     Execute the playbook using the following command:
     ```bash
-    ansible-playbook -i inventory/hosts monitoring.yml --ask-vault-pass
+    ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass
     ```
 
