@@ -39,10 +39,20 @@
     group: "{{ ansible_user }}"
     mode: '0755'
 
-- name: Check if SSL certificate already exists
+- name: Check if SSL certificate already exists (default)
   ansible.builtin.stat:
     path: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
   register: ssl_cert_exists
+
+- name: Check if SSL certificate already exists (grafana)
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ grafana_domain_name }}/fullchain.pem"
+  register: ssl_grafana_cert_exists
+
+- name: Check if SSL certificate already exists (prometheus)
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ prometheus_domain_name }}/fullchain.pem"
+  register: ssl_prometheus_cert_exists
 
 - name: Stop nginx container before obtaining certificate
   shell: cd /opt/monitoring && docker compose stop nginx
@@ -58,6 +68,26 @@
       --non-interactive
   when: not ssl_cert_exists.stat.exists
   become: true
+
+- name: Obtain SSL certificate for Grafana using Certbot (standalone mode)
+  shell: |
+    certbot certonly --standalone \
+      --email {{ ssl_email }} \
+      --agree-tos \
+      --no-eff-email \
+      -d {{ grafana_domain_name }} \
+      --non-interactive
+  when: not ssl_grafana_cert_exists.stat.exists
+
+- name: Obtain SSL certificate for Prometheus using Certbot (standalone mode)
+  shell: |
+    certbot certonly --standalone \
+      --email {{ ssl_email }} \
+      --agree-tos \
+      --no-eff-email \
+      -d {{ prometheus_domain_name }} \
+      --non-interactive
+  when: not ssl_prometheus_cert_exists.stat.exists
 
 - name: Create SSL certificate renewal cron job
   cron:
