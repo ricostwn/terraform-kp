@@ -46,6 +46,22 @@
     group: "{{ ansible_user }}"
     mode: '0644'
 
+- name: Create Nginx grafana configuration
+  template:
+    src: grafana.conf.j2
+    dest: /opt/monitoring/nginx/grafana.conf
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Create Nginx prometheus configuration
+  template:
+    src: prometheus.conf.j2
+    dest: /opt/monitoring/nginx/prometheus.conf
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0644'
+
 - name: Create Docker Compose for monitoring stack
   copy:
     src: docker-compose.yml

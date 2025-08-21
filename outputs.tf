@@ -25,17 +25,17 @@ output "web_servers_names" {
 
 output "load_balancer_url" {
   description = "Load balancer URL"
-  value       = "http://${google_compute_instance.monitoring_server.network_interface[0].access_config[0].nat_ip}"
+  value       = "https://eduko.my.id"
 }
 
 output "grafana_url" {
   description = "Grafana dashboard URL"
-  value       = "http://${google_compute_instance.monitoring_server.network_interface[0].access_config[0].nat_ip}:3000"
+  value       = "https://grafana.eduko.my.id"
 }
 
 output "prometheus_url" {
   description = "Prometheus URL"
-  value       = "http://${google_compute_instance.monitoring_server.network_interface[0].access_config[0].nat_ip}:9090"
+  value       = "https://prometheus.eduko.my.id"
 }
 
 output "grafana_credentials" {

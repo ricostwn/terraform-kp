@@ -2,7 +2,7 @@ groups:
   - name: semua server
     rules:
       - alert: CPUHighUsage
-        expr: ((sum by(instance) (irate(node_cpu_seconds_total{mode!="idle"}[15s]))) / sum by(instance) (irate(node_cpu_seconds_total{}[15s]))) * 100 >= 50
+        expr: (sum by (instance) (rate(node_cpu_seconds_total{mode!="idle", job="node-exporter"}[5m]))) / (sum by (instance) (rate(node_cpu_seconds_total{job="node-exporter"}[5m]))) * 100 >= 50
         for: 30s
         labels:
           severity: critical

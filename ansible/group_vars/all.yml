@@ -4,4 +4,6 @@ node_exporter_web_listen_address: "0.0.0.0:9100"
 # SSL Configuration
 # Replace with your actual domain name
 domain_name: "eduko.my.id"
+grafana_domain_name: "grafana.eduko.my.id"
+prometheus_domain_name: "prometheus.eduko.my.id"
 ssl_email: "eduko@gmail.com"
