@@ -1,0 +1,16 @@
+global:
+  resolve_timeout: 1m
+
+route:
+  receiver: 'default-telegram'
+  group_by: ['alertname']
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: 'default-telegram'
+
+receivers:
+  - name: 'default-telegram'
+    telegram_configs:
+      - bot_token: "8276240127:AAES_FJev8BJOqA41TyKmlKhj-sgOpc4f8o"
+        chat_id: -4813589160
