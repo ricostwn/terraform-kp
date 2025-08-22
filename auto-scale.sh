@@ -4,12 +4,12 @@
 # This script monitors CPU usage and scales web servers up or down
 
 PROMETHEUS_URL="http://localhost:9090"
-SCALE_UP_THRESHOLD=75    # Scale up if CPU > 75% (hysteresis)
+SCALE_UP_THRESHOLD=50    # Scale up if CPU > 50% (hysteresis)
 SCALE_DOWN_THRESHOLD=25  # Scale down if CPU < 25% (hysteresis)
 MIN_SERVERS=2
 MAX_SERVERS=5
 COOLDOWN_PERIOD=600      # 10 minutes cooldown (in seconds)
-LOG_FILE="/var/log/auto-scale.log"
+LOG_FILE="/var/log/autoscale/auto-scale.log"
 LAST_SCALE_FILE="/tmp/last_scale_time"
 
 # Function to write log
@@ -70,7 +70,7 @@ health_check() {
     return 1
 }
 
-# Function to scale web servers (updated)
+# Function to scale web servers
 scale_servers() {
     local target_count=$1
     local current_count=$(get_current_servers)
@@ -106,6 +106,33 @@ scale_servers() {
     fi
 }
 
+# Function to confirm sustained condition (like `for: 30s` in Prometheus)
+confirm_condition() {
+    local condition=$1  # "up" or "down"
+    local duration=30   # 30s hold time
+    local interval=10   # check every 10s
+    local checks=$((duration / interval))
+
+    for ((i=1; i<=checks; i++)); do
+        local cpu_usage=$(get_cpu_usage)
+        log "Re-check $i/$checks: CPU=${cpu_usage}%"
+
+        if [ "$condition" == "up" ]; then
+            if (( $(echo "$cpu_usage <= $SCALE_UP_THRESHOLD" | bc -l) )); then
+                log "❌ CPU dropped below scale-up threshold during confirmation"
+                return 1
+            fi
+        else
+            if (( $(echo "$cpu_usage >= $SCALE_DOWN_THRESHOLD" | bc -l) )); then
+                log "❌ CPU rose above scale-down threshold during confirmation"
+                return 1
+            fi
+        fi
+        sleep $interval
+    done
+    return 0
+}
+
 # Main monitoring loop
 main() {
     log "Starting auto-scaling monitoring..."
@@ -116,16 +143,22 @@ main() {
         
         log "Current CPU Usage: ${cpu_usage}%, Servers: ${current_servers}"
         
-        # Scaling decision with hysteresis + cooldown
+        # Scaling decision with hysteresis + cooldown + confirmation
         if (( $(echo "$cpu_usage > $SCALE_UP_THRESHOLD" | bc -l) )) && [ "$current_servers" -lt "$MAX_SERVERS" ]; then
             if check_cooldown; then
-                log "High CPU usage detected. Scaling up..."
-                scale_servers $((current_servers + 1))
+                log "High CPU usage detected. Confirming for 30s..."
+                if confirm_condition "up"; then
+                    log "High CPU sustained. Scaling up..."
+                    scale_servers $((current_servers + 1))
+                fi
             fi
         elif (( $(echo "$cpu_usage < $SCALE_DOWN_THRESHOLD" | bc -l) )) && [ "$current_servers" -gt "$MIN_SERVERS" ]; then
             if check_cooldown; then
-                log "Low CPU usage detected. Scaling down..."
-                scale_servers $((current_servers - 1))
+                log "Low CPU usage detected. Confirming for 30s..."
+                if confirm_condition "down"; then
+                    log "Low CPU sustained. Scaling down..."
+                    scale_servers $((current_servers - 1))
+                fi
             fi
         fi
         
